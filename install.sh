@@ -18,7 +18,7 @@ main()
     echo "4. Waveshare epd on Trixie OS (Expermental)"
     read -p "Choose an option (1-4): " install_option
 
-    if [$install_option -eq 1]; then
+    if [ $install_option -eq 1 ]; then
         echo "Installing Pimoroni Inky pHat drivers and software."
 
         git clone https://github.com/pimoroni/inky
@@ -34,7 +34,7 @@ main()
         wget https://raw.githubusercontent.com/akrawczyk/Bjorn/refs/heads/main/install_bookworm_inky_bjorn.sh
         sudo chmod +x install_bookworm_inky_bjorn.sh && sudo ./install_bookworm_inky_bjorn.sh
         # Choose the choice 1 for automatic installation. It may take a while as a lot of packages and modules will be installed. You must reboot at the end.
-    elif [$install_option -eq 2]; then
+    elif [ $install_option -eq 2 ]; then
         echo "Installing Pimoroni Inky pHat drivers and software."
 
         git clone https://github.com/pimoroni/inky
@@ -50,13 +50,13 @@ main()
         wget https://raw.githubusercontent.com/akrawczyk/Bjorn/refs/heads/main/install_trixie_inky_bjorn.sh
         sudo chmod +x install_trixie_inky_bjorn.sh && sudo ./install_trixie_inky_bjorn.sh
         # Choose the choice 1 for automatic installation. It may take a while as a lot of packages and modules will be installed. You must reboot at the end.
-    elif [$install_option -eq 1]; then
+    elif [ $install_option -eq 3 ]; then
         echo "Running the install_bjorn.sh script to isntall Bjorn on PI OS Bookworm."
         # Download and run the installer
         wget https://raw.githubusercontent.com/akrawczyk/Bjorn/refs/heads/main/install_bjorn.sh
         sudo chmod +x install_bjorn.sh && sudo ./install_bjorn.sh
         # Choose the choice 1 for automatic installation. It may take a while as a lot of packages and modules will be installed. You must reboot at the end.
-    elif [$install_option -eq 1]; then
+    elif [ $install_option -eq 4 ]; then
         echo "Running the install_trixie_bjorn.sh script to isntall Bjorn on PI OS Bookworm."
         # Download and run the installer
         wget https://raw.githubusercontent.com/akrawczyk/Bjorn/refs/heads/main/install_trixie_bjorn.sh
