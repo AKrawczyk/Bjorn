@@ -1,16 +1,6 @@
-#display.py
-# Description:
-# This file, display.py, is responsible for managing the e-ink display of the Bjorn project, updating it with relevant data and statuses.
-# It initializes the display, manages multiple threads for updating shared data and vulnerability counts, and handles the rendering of information
-# and images on the display.
-#
-# Key functionalities include:
-# - Initializing the e-ink display (EPD) and handling any errors during initialization.
-# - Creating and managing threads to periodically update shared data and vulnerability counts.
-# - Rendering various statistics, status icons, and images on the e-ink display.
-# - Handling updates to shared data from various sources, including CSV files and system commands.
-# - Checking and displaying the status of Bluetooth, Wi-Fi, PAN, and USB connections.
-# - Providing methods to update the display with comments from an AI (Commentaireia) and generating images dynamically.
+# display.py updated for Pimoroni Inky pHat – PORTRAIT layout (122x250)
+# Modified from by Aaron Krawczyk 2026
+# Orignal created by infinition https://github.com/infinition/Bjorn
 
 import threading
 import time
@@ -21,24 +11,32 @@ import glob
 import logging
 import random
 import sys
+import subprocess
 from PIL import Image, ImageDraw
-from init_shared import shared_data  
+from init_shared import shared_data
 from comment import Commentaireia
 from logger import Logger
-import subprocess  
+
+# Pimoroni Inky pHat driver - No need for epd_helper
+from inky.auto import auto
 
 logger = Logger(name="display.py", level=logging.DEBUG)
 
 class Display:
+    WIDTH = 250
+    HEIGHT = 122
+    display = auto()
+    WIDTH, HEIGHT = display.resolution
+    
+    # Swap width and height for your drawing canvas
+    portrait_size = (HEIGHT, WIDTH)
+
     def __init__(self, shared_data):
-        """Initialize the display and start the main image and shared data update threads."""
         self.shared_data = shared_data
         self.config = self.shared_data.config
         self.shared_data.bjornstatustext2 = "Awakening..."
         self.commentaire_ia = Commentaireia()
         self.semaphore = threading.Semaphore(10)
-        self.screen_reversed = self.shared_data.screen_reversed
-        self.web_screen_reversed = self.shared_data.web_screen_reversed
 
         # Define frise positions for different display types
         self.frise_positions = {
@@ -52,13 +50,23 @@ class Display:
             }
         }
 
-        try:
-            self.epd_helper = self.shared_data.epd_helper
-            self.epd_helper.init_partial_update()
-            logger.info("Display initialization complete.")
-        except Exception as e:
-            logger.error(f"Error during display initialization: {e}")
-            raise
+        # Force portrait geometry for Pimoroni Inky pHat
+        self.shared_data.width = self.WIDTH
+        self.shared_data.height = self.HEIGHT
+        self.shared_data.x_center1 = 22
+        self.shared_data.y_bottom1 = 172
+        
+        self.manual_mode_txt = ""
+        self.main_image = None
+        
+        self.scale_factor_x = self.shared_data.scale_factor_x
+        self.scale_factor_y = self.shared_data.scale_factor_y
+        
+        # Update scale factors: X is now squeezed, Y is now stretched
+        self.scale_factor_x = 1
+        self.scale_factor_y = 1
+
+        # ---------------- Threads ----------------
 
         self.main_image_thread = threading.Thread(target=self.update_main_image)
         self.main_image_thread.daemon = True
@@ -72,9 +80,6 @@ class Display:
         self.update_vuln_count_thread.daemon = True
         self.update_vuln_count_thread.start()
 
-        self.scale_factor_x = self.shared_data.scale_factor_x
-        self.scale_factor_y = self.shared_data.scale_factor_y
-
     def get_frise_position(self):
         """Get the frise position based on the display type."""
         display_type = self.config.get("epd_type", "default")
@@ -85,29 +90,30 @@ class Display:
         )
 
     def schedule_update_shared_data(self):
-        """Periodically update the shared data with the latest system information."""
         while not self.shared_data.display_should_exit:
             self.update_shared_data()
             time.sleep(25)
 
     def schedule_update_vuln_count(self):
-        """Periodically update the vulnerability count on the display."""
         while not self.shared_data.display_should_exit:
             self.update_vuln_count()
             time.sleep(300)
 
     def update_main_image(self):
-        """Update the main image on the display with the latest immagegen data."""
         while not self.shared_data.display_should_exit:
             try:
                 self.shared_data.update_image_randomizer()
-                if self.shared_data.imagegen:
-                    self.main_image = self.shared_data.imagegen
-                else:
-                    logger.error("No image generated for current status.")
-                time.sleep(random.uniform(self.shared_data.image_display_delaymin, self.shared_data.image_display_delaymax))
+                self.main_image = self.shared_data.imagegen
+                time.sleep(
+                    random.uniform(
+                        self.shared_data.image_display_delaymin,
+                        self.shared_data.image_display_delaymax,
+                    )
+                )
             except Exception as e:
-                logger.error(f"An error occurred in update_main_image: {e}")
+                logger.error(f"Main image error: {e}")
+
+    # ---------------- Data ----------------
 
     def get_open_files(self):
         """Get the number of open FD files on the system."""
@@ -208,30 +214,15 @@ class Display:
             except Exception as e:
                 logger.error(f"Error updating shared data: {e}")
 
+
+    # ---------------- Helpers ----------------
+
     def display_comment(self, status):
-        """Display the comment based on the status of the BjornOrch."""
         comment = self.commentaire_ia.get_commentaire(status)
         if comment:
             self.shared_data.bjornsay = comment
-            self.shared_data.bjornstatustext = self.shared_data.bjornorch_status
-        else:
-            pass
-
-    # # # def is_bluetooth_connected(self):
-    # # #     """
-    # # #     Check if any device is connected to the Bluetooth (pan0) interface by checking the output of 'ip neigh show dev pan0'.
-    # # #     """
-    # # #     try:
-    # # #         result = subprocess.Popen(['ip', 'neigh', 'show', 'dev', 'pan0'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    # # #         output, error = result.communicate()
-    # # #         if result.returncode != 0:
-    # # #             logger.error(f"Error executing 'ip neigh show dev pan0': {error}")
-    # # #             return False
-    # # #         return bool(output.strip())
-    # # #     except Exception as e:
-    # # #         logger.error(f"Error checking Bluetooth connection status: {e}")
-    # # #         return False
-
+            self.shared_data.bjornstatustext = status
+            
     def is_wifi_connected(self):
         """Check if WiFi is connected by checking the current SSID."""
         try:
@@ -275,60 +266,74 @@ class Display:
             logger.error(f"Error checking USB connection status: {e}")
             return False
 
+    # ---------------- Rendering ----------------
+
+    def convert_palette(self, img):
+        return img.convert("P", palette=Image.ADAPTIVE, colors=2)
+
     def run(self):
-        """Main loop for updating the EPD display with shared data."""
-        self.manual_mode_txt = ""
+        logger.info("Portrait display loop started")
+
         while not self.shared_data.display_should_exit:
             try:
-                self.epd_helper.init_partial_update()
+               # self.epd_helper.init_partial_update()
                 self.display_comment(self.shared_data.bjornorch_status)
-                image = Image.new('1', (self.shared_data.width, self.shared_data.height))
+                logger.debug(f"Shared width x height: {self.shared_data.width} x {self.shared_data.height}")
+
+                # Portrait dimensions (Tall: e.g., 122x250)
+                p_w, p_h = self.portrait_size 
+
+                self.display_comment(self.shared_data.bjornorch_status)
+
+                # 2. INITIALIZE IMAGE
+                image = Image.new('RGB', (p_w, p_h), color=(255, 255, 255))
                 draw = ImageDraw.Draw(image)
-                draw.rectangle((0, 0, self.shared_data.width, self.shared_data.height), fill=255)
-                draw.text((int(37 * self.scale_factor_x), int(5 * self.scale_factor_y)), "BJORN", font=self.shared_data.font_viking, fill=0)
-                draw.text((int(110 * self.scale_factor_x), int(170 * self.scale_factor_y)), self.manual_mode_txt, font=self.shared_data.font_arial14, fill=0)
-                
+                draw.rectangle((0, 0, p_w, p_h), fill=(255, 255, 255))
+
+                draw.text((int(37 * self.scale_factor_x), int(5 * self.scale_factor_y)), "BJORN", font=self.shared_data.font_viking, fill=(0, 0, 0))
+                draw.text((int(110 * self.scale_factor_x), int(170 * self.scale_factor_y)), self.manual_mode_txt, font=self.shared_data.font_arial14, fill=self.display.BLACK)
+
                 if self.shared_data.wifi_connected:
-                    image.paste(self.shared_data.wifi, (int(3 * self.scale_factor_x), int(3 * self.scale_factor_y)))
-                # # # if self.shared_data.bluetooth_active:
-                # # #     image.paste(self.shared_data.bluetooth, (int(23 * self.scale_factor_x), int(4 * self.scale_factor_y)))
+                    image.paste(self.shared_data.wifi, (int(5 * self.scale_factor_x), int(5 * self.scale_factor_y)))
+                # # # if shared_data.bluetooth_active:
+                # # #     image.paste(shared_data.bluetooth, (int(23 * scale_factor_x), int(4 * scale_factor_y)))
                 if self.shared_data.pan_connected:
                     image.paste(self.shared_data.connected, (int(104 * self.scale_factor_x), int(3 * self.scale_factor_y)))
                 if self.shared_data.usb_active:
                     image.paste(self.shared_data.usb, (int(90 * self.scale_factor_x), int(4 * self.scale_factor_y)))
 
                 stats = [
-                    (self.shared_data.target, (int(8 * self.scale_factor_x), int(22 * self.scale_factor_y)), (int(28 * self.scale_factor_x), int(22 * self.scale_factor_y)), str(self.shared_data.targetnbr)),
-                    (self.shared_data.port, (int(47 * self.scale_factor_x), int(22 * self.scale_factor_y)), (int(67 * self.scale_factor_x), int(22 * self.scale_factor_y)), str(self.shared_data.portnbr)),
-                    (self.shared_data.vuln, (int(86 * self.scale_factor_x), int(22 * self.scale_factor_y)), (int(106 * self.scale_factor_x), int(22 * self.scale_factor_y)), str(self.shared_data.vulnnbr)),
-                    (self.shared_data.cred, (int(8 * self.scale_factor_x), int(41 * self.scale_factor_y)), (int(28 * self.scale_factor_x), int(41 * self.scale_factor_y)), str(self.shared_data.crednbr)),
-                    (self.shared_data.money, (int(3 * self.scale_factor_x), int(172 * self.scale_factor_y)), (int(3 * self.scale_factor_x), int(192 * self.scale_factor_y)), str(self.shared_data.coinnbr)),
-                    (self.shared_data.level, (int(2 * self.scale_factor_x), int(217 * self.scale_factor_y)), (int(4 * self.scale_factor_x), int(237 * self.scale_factor_y)), str(self.shared_data.levelnbr)),
-                    (self.shared_data.zombie, (int(47 * self.scale_factor_x), int(41 * self.scale_factor_y)), (int(67 * self.scale_factor_x), int(41 * self.scale_factor_y)), str(self.shared_data.zombiesnbr)),
-                    (self.shared_data.networkkb, (int(102 * self.scale_factor_x), int(190 * self.scale_factor_y)), (int(102 * self.scale_factor_x), int(208 * self.scale_factor_y)), str(self.shared_data.networkkbnbr)),
-                    (self.shared_data.data, (int(86 * self.scale_factor_x), int(41 * self.scale_factor_y)), (int(106 * self.scale_factor_x), int(41 * self.scale_factor_y)), str(self.shared_data.datanbr)),
-                    (self.shared_data.attacks, (int(100 * self.scale_factor_x), int(218 * self.scale_factor_y)), (int(102 * self.scale_factor_x), int(237 * self.scale_factor_y)), str(self.shared_data.attacksnbr)),
+                    (shared_data.target, (int(8 * self.scale_factor_x), int(22 * self.scale_factor_y)), (int(28 * self.scale_factor_x), int(22 * self.scale_factor_y)), str(shared_data.targetnbr)),
+                    (shared_data.port, (int(47 * self.scale_factor_x), int(22 * self.scale_factor_y)), (int(67 * self.scale_factor_x), int(22 * self.scale_factor_y)), str(shared_data.portnbr)),
+                    (shared_data.vuln, (int(86 * self.scale_factor_x), int(22 * self.scale_factor_y)), (int(106 * self.scale_factor_x), int(22 * self.scale_factor_y)), str(shared_data.vulnnbr)),
+                    (shared_data.cred, (int(8 * self.scale_factor_x), int(41 * self.scale_factor_y)), (int(28 * self.scale_factor_x), int(41 * self.scale_factor_y)), str(shared_data.crednbr)),
+                    (shared_data.money, (int(3 * self.scale_factor_x), int(172 * self.scale_factor_y)), (int(3 * self.scale_factor_x), int(192 * self.scale_factor_y)), str(shared_data.coinnbr)),
+                    (shared_data.level, (int(2 * self.scale_factor_x), int(217 * self.scale_factor_y)), (int(4 * self.scale_factor_x), int(237 * self.scale_factor_y)), str(shared_data.levelnbr)),
+                    (shared_data.zombie, (int(47 * self.scale_factor_x), int(41 * self.scale_factor_y)), (int(67 * self.scale_factor_x), int(41 * self.scale_factor_y)), str(shared_data.zombiesnbr)),
+                    (shared_data.networkkb, (int(102 * self.scale_factor_x), int(190 * self.scale_factor_y)), (int(102 * self.scale_factor_x), int(208 * self.scale_factor_y)), str(shared_data.networkkbnbr)),
+                    (shared_data.data, (int(86 * self.scale_factor_x), int(41 * self.scale_factor_y)), (int(106 * self.scale_factor_x), int(41 * self.scale_factor_y)), str(shared_data.datanbr)),
+                    (shared_data.attacks, (int(100 * self.scale_factor_x), int(218 * self.scale_factor_y)), (int(102 * self.scale_factor_x), int(237 * self.scale_factor_y)), str(shared_data.attacksnbr)),
                 ]
 
                 for img, img_pos, text_pos, text in stats:
                     image.paste(img, img_pos)
-                    draw.text(text_pos, text, font=self.shared_data.font_arial9, fill=0)
+                    draw.text(text_pos, text, font=shared_data.font_arial9, fill=self.display.BLACK)
 
-                self.shared_data.update_bjornstatus()
-                image.paste(self.shared_data.bjornstatusimage, (int(3 * self.scale_factor_x), int(60 * self.scale_factor_y)))
-                draw.text((int(35 * self.scale_factor_x), int(65 * self.scale_factor_y)), self.shared_data.bjornstatustext, font=self.shared_data.font_arial9, fill=0)
-                draw.text((int(35 * self.scale_factor_x), int(75 * self.scale_factor_y)), self.shared_data.bjornstatustext2, font=self.shared_data.font_arial9, fill=0)
+                shared_data.update_bjornstatus()
+                image.paste(shared_data.bjornstatusimage, (int(3 * self.scale_factor_x), int(60 * self.scale_factor_y)))
+                draw.text((int(35 * self.scale_factor_x), int(65 * self.scale_factor_y)), shared_data.bjornstatustext, font=shared_data.font_arial9, fill=self.display.BLACK)
+                draw.text((int(35 * self.scale_factor_x), int(75 * self.scale_factor_y)), shared_data.bjornstatustext2, font=shared_data.font_arial9, fill=self.display.BLACK)
 
                 # Get frise position based on display type
                 frise_x, frise_y = self.get_frise_position()
-                image.paste(self.shared_data.frise, (frise_x, frise_y))
+                image.paste(shared_data.frise, (frise_x, frise_y))
 
-                draw.rectangle((1, 1, self.shared_data.width - 1, self.shared_data.height - 1), outline=0)
-                draw.line((1, 20, self.shared_data.width - 1, 20), fill=0)
-                draw.line((1, 59, self.shared_data.width - 1, 59), fill=0)
-                draw.line((1, 87, self.shared_data.width - 1, 87), fill=0)
+                draw.rectangle((1, 1, p_w - 1, p_h - 1), outline=0)
+                draw.line((1, 20, p_w - 1, 20), fill=self.display.BLACK)
+                draw.line((1, 59, p_w - 1, 59), fill=self.display.BLACK)
+                draw.line((1, 87, p_w - 1, 87), fill=self.display.BLACK)
 
-                lines = self.shared_data.wrap_text(self.shared_data.bjornsay, self.shared_data.font_arialbold, self.shared_data.width - 4)
+                lines = shared_data.wrap_text(shared_data.bjornsay, shared_data.font_arialbold, p_w - 4)
                 y_text = int(90 * self.scale_factor_y)
 
                 if self.main_image is not None:
@@ -337,25 +342,27 @@ class Display:
                     logger.error("Main image not found in shared_data.")
 
                 for line in lines:
-                    draw.text((int(4 * self.scale_factor_x), y_text), line, font=self.shared_data.font_arialbold, fill=0)
+                    draw.text((int(4 * self.scale_factor_x), y_text), line, font=shared_data.font_arialbold, fill=self.display.BLACK)
                     y_text += (self.shared_data.font_arialbold.getbbox(line)[3] - self.shared_data.font_arialbold.getbbox(line)[1]) + 3
 
-                if self.screen_reversed:
-                    image = image.transpose(Image.ROTATE_180)
+                final_image = image.rotate(90, expand=True)
 
-                self.epd_helper.display_partial(image)
-                self.epd_helper.display_partial(image)
-
-                if self.web_screen_reversed:
-                    image = image.transpose(Image.ROTATE_180)
+                self.display.set_image(final_image)
+                self.display.show()
+                                
                 with open(os.path.join(self.shared_data.webdir, "screen.png"), 'wb') as img_file:
                     image.save(img_file)
                     img_file.flush()
                     os.fsync(img_file.fileno())
-                
-                time.sleep(self.shared_data.screen_delay)
+
+                time.sleep(max(getattr(self.shared_data, "screen_delay", 30), 30))
+
             except Exception as e:
-                logger.error(f"An error occurred: {e}")
+                logger.error(f"Display error: {e}")
+                time.sleep(30)
+
+
+# ---------------- Shutdown ----------------
 
 def handle_exit_display(signum, frame, display_thread):
     """Handle the exit signal and close the display."""
