@@ -69,7 +69,7 @@ The fastest way to install Bjorn is using the automatic installation script :
 ```bash
 # Download and run the installer
 wget https://raw.githubusercontent.com/akrawczyk/Bjorn/refs/heads/main/install.sh
-sudo chmod +x install.sh && sudo ./install.sh
+chmod +x install.sh && ./install.sh
 # Choose the choice 1 for automatic installation. It may take a while as a lot of packages and modules will be installed. You must reboot at the end.
 ```
 
