@@ -9,7 +9,8 @@ NC='\033[0m'
 main() 
 {
     echo "Starting BJORN installation..."
-    
+    echo "Installing git."
+    sudo apt install -y git
 
     echo -e "${BLUE}BJORN PI OS Installation Options:${NC}"
     echo "1. Pimoroni Inky pHat on Bookworm OS"
@@ -20,7 +21,7 @@ main()
 
     if [ $install_option -eq 1 ]; then
         echo "Installing Pimoroni Inky pHat drivers and software."
-
+        
         git clone https://github.com/pimoroni/inky
         ~/inky/install.sh
 
