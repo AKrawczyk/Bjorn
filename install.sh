@@ -23,7 +23,9 @@ main()
         echo "Installing Pimoroni Inky pHat drivers and software."
         
         git clone https://github.com/pimoroni/inky
-        ~/inky/install.sh
+        cd ~/inky
+        ./install.sh
+        cd ~
 
         ~/.virtualenvs/pimoroni/bin/pip install pandas
         ~/.virtualenvs/pimoroni/bin/pip install netifaces pymysql pysmb paramiko sqlalchemy telnetlib-313-and-up
@@ -39,7 +41,9 @@ main()
         echo "Installing Pimoroni Inky pHat drivers and software."
 
         git clone https://github.com/pimoroni/inky
-        ~/inky/install.sh
+        cd ~/inky
+        ./install.sh
+        cd ~
 
         ~/.virtualenvs/pimoroni/bin/pip install pandas
         ~/.virtualenvs/pimoroni/bin/pip install netifaces pymysql pysmb paramiko sqlalchemy telnetlib-313-and-up

@@ -25,7 +25,7 @@ CURRENT_STEP=0
 TOTAL_STEPS=8
 
 if [[ "$1" == "--help" ]]; then
-    echo "Usage: sudo ./install_bjorn.sh"
+    echo "Usage: sudo ./install_trixie_bjorn.sh"
     echo "Make sure you have the necessary permissions and that all dependencies are met."
     exit 0
 fi
@@ -553,7 +553,7 @@ main() {
             *) echo -e "${RED}Invalid choice. Please select 1-5.${NC}";;
         esac
     done
-    
+
     log "INFO" "Selected E-Paper Display version: $EPD_VERSION"
 
     case $install_option in

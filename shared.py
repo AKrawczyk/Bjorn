@@ -288,8 +288,8 @@ class SharedData:
         self.bjornorch_status = "IDLE"
         self.bjornstatustext = "IDLE"
         self.bjornstatustext2 = "Awakening..."
-        self.scale_factor_x = self.width / self.ref_width
-        self.scale_factor_y = self.height / self.ref_height
+        self.scale_factor_x = 1 #self.width / self.ref_width
+        self.scale_factor_y = 1 #self.height / self.ref_height
         self.text_frame_top = int(88 * self.scale_factor_x)
         self.text_frame_bottom = int(159 * self.scale_factor_y)
         self.y_text = self.text_frame_top + 2
@@ -545,8 +545,8 @@ class SharedData:
 
 
             """Calculate the position of the Bjorn image on the screen to center it"""
-            self.x_center1 = (self.width - self.bjorn1.width) // 2
-            self.y_bottom1 = self.height - self.bjorn1.height
+            self.x_center1 = 22 #(self.width - self.bjorn1.width) // 2
+            self.y_bottom1 = 172 #self.height - self.bjorn1.height
 
         except Exception as e:
             logger.error(f"Error loading images: {e}")

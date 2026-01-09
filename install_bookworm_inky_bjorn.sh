@@ -25,7 +25,7 @@ CURRENT_STEP=0
 TOTAL_STEPS=8
 
 if [[ "$1" == "--help" ]]; then
-    echo "Usage: sudo ./install_bjorn.sh"
+    echo "Usage: sudo ./install_bookworm_inky_bjorn.sh"
     echo "Make sure you have the necessary permissions and that all dependencies are met."
     exit 0
 fi
@@ -360,7 +360,7 @@ After=local-fs.target
 
 [Service]
 ExecStartPre=/home/bjorn/Bjorn/kill_port_8000.sh
-ExecStart=/usr/bin/python3 /home/bjorn/Bjorn/Bjorn.py
+ExecStart=/home/bjorn/.virtualenvs/pimoroni/bin/python3 /home/bjorn/Bjorn/Bjorn.py
 WorkingDirectory=/home/bjorn/Bjorn
 StandardOutput=inherit
 StandardError=inherit
