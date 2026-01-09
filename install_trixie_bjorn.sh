@@ -325,7 +325,7 @@ setup_bjorn() {
     # Install requirements with --break-system-packages flag
     log "INFO" "Installing Python requirements..."
     
-    pip3 install -r requirements.txt --break-system-packages
+    pip3 install -r requirements2.txt --break-system-packages
     check_success "Installed Python requirements"
 
     # Set correct permissions
