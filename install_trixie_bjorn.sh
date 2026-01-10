@@ -311,6 +311,8 @@ setup_bjorn() {
     fi
 
     cd Bjorn
+    log "INFO" "Downloading updated requirments to support Pi OS Trixie..."
+    wget https://raw.githubusercontent.com/AKrawczyk/Bjorn/refs/heads/main/requirments2.txt
 
     # Update the shared_config.json file with the selected EPD version
     log "INFO" "Updating E-Paper display configuration..."
